@@ -11,6 +11,7 @@
 int findAndConnectDevice(idevice_t * device);
 int retriveUDID(idevice_t * device, char ** udid);
 int pairDevice(lockdownd_client_t * client, idevice_t * device, char * udid);
+int validateDevice(lockdownd_client_t * client,  idevice_t * device, char * udid);
 void printErrorMessage(lockdownd_error_t err, char * udid);
 
 int main(){
@@ -29,16 +30,16 @@ int main(){
     result = pairDevice(&client, &device, udid);
     if(result != 0) goto leave;
 
-    // /* Outputs device identifier */
-    // printf("Connected with UDID: %s\n", udid);
-    // lerr = lockdownd_client_new(device, &client, TOOL_NAME);
-    // lerr = lockdownd_query_type(client, &type);
-    // lerr = lockdownd_pair(client, NULL);
-    // client = NULL;
-    // lerr = lockdownd_client_new_with_handshake(device, &client, TOOL_NAME);
-    // /* Cleanup */
-    // idevice_free(device);
-    // free(udid);
+    result = validateDevice(&client, &device, udid);
+    if(result != 0) goto leave;
+
+    //download ifuse library
+    //create dir with udid name
+    //mount
+    //wait enter
+    //unpair
+    //umount
+    //remove dir
 
 leave:
 	lockdownd_client_free(client);
@@ -153,6 +154,38 @@ int pairDevice(lockdownd_client_t * client, idevice_t * device, char * udid){
     }
     
     free(type);
+    return 1;
+}
+
+int validateDevice(lockdownd_client_t * client,  idevice_t * device, char * udid){
+    using namespace std::chrono_literals;
+    lockdownd_error_t lerr;
+    int attempts = 0;
+
+    lockdownd_client_free(*client);
+    if(*client != NULL){
+        *client = NULL;
+    }
+
+    std::cout << "Validating device... ";
+    std::cout.flush();
+    while(true){
+        if(attempts < MAX_ATTMPTS){
+            lerr = lockdownd_client_new_with_handshake(*device, client, TOOL_NAME);
+            if(lerr == LOCKDOWN_E_SUCCESS){
+                std::cout << "Success!" <<std::endl;
+                return 0;
+            }
+
+            printErrorMessage(lerr, udid);
+            attempts++;
+            std::this_thread::sleep_for(2000ms);
+        }else{
+            std::cout << ERR_ATTMPTS;
+            break;
+        }
+    }
+
     return 1;
 }
 
