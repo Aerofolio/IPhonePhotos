@@ -207,9 +207,9 @@ int mountDevice(char * udid){
 
 int umountDevice(char * udid){
     system(("umount " + getDirectoryName(udid)).c_str());
-    system(("remdir " + getDirectoryName(udid)).c_str());
+    system(("rmdir " + getDirectoryName(udid)).c_str());
 
-    std::cout << "Mount and " << getDirectoryName(udid) << " removed.";
+    std::cout << "Mount and " << getDirectoryName(udid) << " removed." << std::endl;
     return 0;
 }
 
@@ -248,7 +248,7 @@ std::string getDirectoryName(char * udid){
 }
 
 void pressAnyKeyToEnd(){
-    std::cout << std::endl << "Press any key to finish..";
+    std::cout << std::endl << "Press any key to finish.." << std::endl;
     std::cin.ignore().get();
 }
 
