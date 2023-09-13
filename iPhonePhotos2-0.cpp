@@ -5,7 +5,7 @@
 #include <libimobiledevice/lockdown.h>
 
 #define TOOL_NAME "iphonephotos"
-#define MAX_ATTMPTS 5
+#define MAX_ATTMPTS 8
 #define ERR_ATTMPTS "ERROR: Max number of attempts exceeded.\n"
 
 int findAndConnectDevice(idevice_t * device);
@@ -13,6 +13,11 @@ int retriveUDID(idevice_t * device, char ** udid);
 int pairDevice(lockdownd_client_t * client, idevice_t * device, char * udid);
 int validateDevice(lockdownd_client_t * client,  idevice_t * device, char * udid);
 void printErrorMessage(lockdownd_error_t err, char * udid);
+int mountDevice(char * udid);
+std::string getDirectoryName(char * udid);
+void pressAnyKeyToEnd();
+int unPair(lockdownd_client_t * client, char * udid);
+int umountDevice(char * udid);
 
 int main(){
     int result = 0;
@@ -33,13 +38,16 @@ int main(){
     result = validateDevice(&client, &device, udid);
     if(result != 0) goto leave;
 
-    //download ifuse library
-    //create dir with udid name
-    //mount
-    //wait enter
-    //unpair
-    //umount
-    //remove dir
+    result = mountDevice(udid);
+    if(result != 0) goto leave;
+
+    pressAnyKeyToEnd();
+
+    result = unPair(&client, udid);
+    if(result != 0) goto leave;
+
+    result = umountDevice(udid);
+    if(result != 0) goto leave;
 
 leave:
 	lockdownd_client_free(client);
@@ -187,6 +195,61 @@ int validateDevice(lockdownd_client_t * client,  idevice_t * device, char * udid
     }
 
     return 1;
+}
+
+int mountDevice(char * udid){
+    system(("mkdir " + getDirectoryName(udid)).c_str());
+    system(("ifuse " + getDirectoryName(udid)).c_str());
+
+    std::cout << "Mount created at " << getDirectoryName(udid) << std::endl;
+    return 0;
+}
+
+int umountDevice(char * udid){
+    system(("umount " + getDirectoryName(udid)).c_str());
+    system(("remdir " + getDirectoryName(udid)).c_str());
+
+    std::cout << "Mount and " << getDirectoryName(udid) << " removed.";
+    return 0;
+}
+
+int unPair(lockdownd_client_t * client, char * udid){
+    using namespace std::chrono_literals;
+
+    int attempts = 0;
+    lockdownd_error_t lerr;
+
+    std::cout << "Unpairing device... ";
+    std::cout.flush();
+    do{
+        lerr = lockdownd_unpair(*client, NULL);
+        if (lerr == LOCKDOWN_E_SUCCESS) {
+            std::cout << "Sucess!" << std::endl;
+            return 0;
+        } else {
+            if(attempts == 0) std::cout << std::endl;
+            printErrorMessage(lerr, udid);
+
+            attempts++;
+            std::this_thread::sleep_for(2000ms);
+        }
+
+    }while(lerr != LOCKDOWN_E_SUCCESS || attempts < MAX_ATTMPTS);
+    
+    if(!(attempts < MAX_ATTMPTS)) std::cout << ERR_ATTMPTS;
+    return 1;
+}
+
+std::string getDirectoryName(char * udid){
+    const char * basePath = "~/Desktop/";
+    std::string udidString = std::string(udid);
+
+    return std::string((basePath + udidString).c_str());
+}
+
+void pressAnyKeyToEnd(){
+    std::cout << std::endl << "Press any key to finish..";
+    std::cin.ignore().get();
 }
 
 void printErrorMessage(lockdownd_error_t err, char * udid){

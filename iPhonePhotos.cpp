@@ -11,11 +11,11 @@ int main(){
     //you will need sudo apt install ifuse
     //sudo apt install libimobiledevice-utils
     
-    // pairDevice();
-    // validateDevice();
-    // createDCMI();
-    // pressAnyKeyToEnd();
-    // deleteDCMI();
+    pairDevice();
+    validateDevice();
+    createDCMI();
+    pressAnyKeyToEnd();
+    deleteDCMI();
 }
 
 void pairDevice(){
